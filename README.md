@@ -1,11 +1,11 @@
 ## About
 
-This project came out from the need for the simple [audio sample](https://en.wikipedia.org/wiki/Sampling_(music)) browser based on the actual filesystem
-hierarchy rather than fancy database (which is great when you know what are you looking for but not when just trying to pick something fresh and interesting).
+This project was born from the need for the simple [audio sample](https://en.wikipedia.org/wiki/Sampling_(music)) browser based on the actual filesystem
+hierarchy, rather than fancy database (which is great when you know what are you looking for, but not when you are just trying to pick something fresh and interesting).
 
-I have already found that column view known from Apple macOS Finder file browser is great for quickly browsing
-through file collection. What's not so great is that previewing (opening and listening) media files is rather clunky and takes
-some time to open. What's more, there is no equivalent for column view in Windows world unless you decide to use third
+While using Apple macOS operating system, I have found that "column view" known from its Finder file browser is great for quickly browsing
+through large file collections. What's not so great is that previewing (opening and listening) media files is rather clunky and takes
+some time to open and later switch to another file. What's more, there is no equivalent for column view in Windows world, unless you decide to use third
 party file browser. This application aims to fill that gap.
 
 <figure>
