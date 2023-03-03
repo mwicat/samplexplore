@@ -6,13 +6,20 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtMultimedia import QMediaContent, QMediaPlayer
 
+from pyqtconsole.console import PythonConsole
+
+from .db import SampleDB
+
 SUPPORTED_EXTENSIONS = [
     'wav',
     'aif',
     'mp3',
+    'flac',
 ]
 
-INITIAL_SIZE = 800, 600
+DB_PATH = '/tmp/sample_files.sqlite'
+
+INITIAL_SIZE = 1000, 600
 
 
 class RenderTypeProxyModel(QSortFilterProxyModel):
@@ -59,6 +66,8 @@ class Browser(QDialog):
     def __init__(self, parent=None):
         super(Browser, self).__init__(parent)
 
+        self.sample_db = SampleDB(DB_PATH)
+
         self.resize(*INITIAL_SIZE)
         self.setWindowTitle('Sample browser')
 
@@ -102,33 +111,99 @@ class Browser(QDialog):
         self.media_pane.setContentsMargins(0, 0, 0, 0)
 
         self.playBtn = QPushButton()
-        self.playBtn.setEnabled(False)
+        #self.playBtn.setEnabled(False)
         self.playBtn.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
+        self.playBtn.clicked.connect(self.on_play_clicked)
 
         self.media_pane.addWidget(self.playBtn)
         self.media_pane.addWidget(self.media_slider)
 
         grid = QGridLayout()
-        grid.setContentsMargins(0, 0, 0, 0)
+        #grid.setContentsMargins(0, 0, 0, 0)
 
-        grid.addWidget(self.file_view, 0, 0)
-        grid.addLayout(self.media_pane, 1, 0)
+        self.searchTypeTimer = QTimer(self)
+        self.searchTypeTimer.timeout.connect(self.perform_search)
+        self.searchTypeTimer.setSingleShot(True)
+
+        self.search_view = QVBoxLayout()
+        #self.search_view.setContentsMargins(0, 0, 0, 0)
+
+        self.searchEdit = QLineEdit()
+        self.searchEdit.setPlaceholderText("Search...")
+        self.searchEdit.textChanged.connect(self.on_search_input)
+        self.searchEdit.setMaximumWidth(250);
+
+        self.search_view.addWidget(self.searchEdit)
+
+        self.searchResultList = QListView()
+
+        self.searchResultModel = QStandardItemModel()
+
+        self.searchResultList.setModelColumn(1)
+        self.searchResultList.setModel(self.searchResultModel)
+        self.searchResultList.clicked.connect(self.search_result_clicked)
+
+        self.searchResultList.setMaximumWidth(250);
+        self.searchEdit.setMaximumWidth(250);
+
+        self.search_view.addWidget(self.searchResultList)
+
+        grid.addLayout(self.search_view, 0, 0, 1, 1)
+
+        grid.addWidget(self.file_view, 0, 1, 1, 3)
+        grid.addLayout(self.media_pane, 1, 0, 1, 4)
 
         self.setLayout(grid)
 
+    def search_result_clicked(self, index):
+        row = index.row()
+
+        fn = index.sibling(row, 0).data()
+        full_path = index.sibling(row, 1).data()
+        self.select_path(full_path)
+
+    def perform_search(self):
+        self.searchResultModel.clear()
+
+        if self.search_phrase:
+            results = self.sample_db.search_file(self.search_phrase)
+            for result in results:
+                self.searchResultModel.appendRow([QStandardItem(result[1]), QStandardItem(result[0])])
+
+    def on_search_input(self, search_phrase):
+        self.search_phrase = search_phrase
+        self.searchTypeTimer.start(500)
+
+    def select_path(self, path):
+        print('select path', path)
+        idx = self.fsmodel.index(path)
+        self.file_view.setCurrentIndex(self.proxyModel.mapFromSource(idx))
+
+    def on_play_clicked(self):
+        print('play')
+
     def get_selected_fileinfo(self):
+        indexes = self.file_view.selectedIndexes()
+
+        if not indexes:
+            return
         index = self.file_view.selectedIndexes()[0]
         finfo = self.fsmodel.fileInfo(self.proxyModel.mapToSource(index))
         return finfo
 
     def on_files_selected(self, *args, **kwargs):
         finfo = self.get_selected_fileinfo()
+
+        if finfo is None:
+            return
+
         self.mediaPlayer.stop()
 
         if finfo.isDir():
             return
 
         media_path = finfo.filePath()
+
         self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(media_path)))
         self.mediaPlayer.play()
 
@@ -157,6 +232,10 @@ def main():
 
     browser = Browser()
     browser.show()
+
+    console = PythonConsole(locals=locals())
+    console.show()
+    console.eval_queued()
 
     sys.exit(app.exec_())
 
