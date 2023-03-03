@@ -1,5 +1,7 @@
 import os
+import math
 import sys
+import pathlib
 
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
@@ -9,6 +11,8 @@ from PyQt5.QtMultimedia import QMediaContent, QMediaPlayer
 from pyqtconsole.console import PythonConsole
 
 from .db import SampleDB
+from . import mediautils
+from . import fileutils
 
 SUPPORTED_EXTENSIONS = [
     'wav',
@@ -17,10 +21,27 @@ SUPPORTED_EXTENSIONS = [
     'flac',
 ]
 
+WEBSITE_URL = 'https://github.com/mwicat/sample_explorer'
+
 DB_PATH = '/tmp/sample_files.sqlite'
 
 INITIAL_SIZE = 1000, 600
 
+
+class SearchResultItemModel(QStandardItemModel):
+
+    def mimeTypes(self):
+        return ["text/uri-list"]
+
+    def mimeData( self, indexes):
+        mimedata = QMimeData()
+        urls = []
+        for index in indexes:
+            row = index.row()
+            full_path = index.sibling(row, 1).data()
+            urls.append(QUrl.fromLocalFile(full_path))
+        mimedata.setUrls(urls)
+        return mimedata
 
 class RenderTypeProxyModel(QSortFilterProxyModel):
     def __init__(self):
@@ -62,9 +83,20 @@ class RenderTypeProxyModel(QSortFilterProxyModel):
         return super(RenderTypeProxyModel, self).lessThan(left, right)
 
 
-class Browser(QDialog):
-    def __init__(self, parent=None):
-        super(Browser, self).__init__(parent)
+class Browser(QMainWindow):
+    def __init__(self, parent=None, console=None, app=None):
+        super(Browser, self).__init__(parent=parent, flags=Qt.WindowStaysOnTopHint)
+
+        #self.setWindowIcon(QIcon('logo.png'))
+
+        self.console = console
+        self.app = app
+
+        self.statusBar = QStatusBar()
+        self.setStatusBar(self.statusBar)
+
+        self._createActions()
+        self._createMenuBar()
 
         self.sample_db = SampleDB(DB_PATH)
 
@@ -80,6 +112,9 @@ class Browser(QDialog):
         self.mediaPlayer = QMediaPlayer()
         self.mediaPlayer.positionChanged.connect(self.media_position_changed)
         self.mediaPlayer.durationChanged.connect(self.media_duration_changed)
+        self.mediaPlayer.stateChanged.connect(self.media_state_changed)
+        self.mediaPlayer.durationChanged.connect(self.media_duration_changed)
+        self.mediaPlayer.mediaChanged.connect(self.media_changed)
 
         self.proxyModel = RenderTypeProxyModel()
         self.proxyModel.setSourceModel(self.fsmodel)
@@ -97,7 +132,8 @@ class Browser(QDialog):
 
         root_index = self.proxyModel.mapFromSource(og_index)
         self.file_view.setRootIndex(root_index)
-        self.file_view.clicked.connect(self.on_files_selected)
+
+        self.file_view.clicked.connect(self.on_file_view_clicked)
 
         selection_model = self.file_view.selectionModel()
 
@@ -111,37 +147,59 @@ class Browser(QDialog):
         self.media_pane.setContentsMargins(0, 0, 0, 0)
 
         self.playBtn = QPushButton()
-        #self.playBtn.setEnabled(False)
         self.playBtn.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
         self.playBtn.clicked.connect(self.on_play_clicked)
 
         self.media_pane.addWidget(self.playBtn)
+
+        self.stopBtn = QPushButton()
+        self.stopBtn.setIcon(self.style().standardIcon(QStyle.SP_MediaStop))
+        self.stopBtn.clicked.connect(self.on_stop_clicked)
+
+        self.media_pane.addWidget(self.stopBtn)
+
+        self.positionLabel = QLabel('--:--')
+        self.media_pane.addWidget(self.positionLabel)
+
         self.media_pane.addWidget(self.media_slider)
 
+        self.durationLabel = QLabel('--:--')
+        self.media_pane.addWidget(self.durationLabel)
+
         grid = QGridLayout()
-        #grid.setContentsMargins(0, 0, 0, 0)
 
         self.searchTypeTimer = QTimer(self)
         self.searchTypeTimer.timeout.connect(self.perform_search)
         self.searchTypeTimer.setSingleShot(True)
 
         self.search_view = QVBoxLayout()
-        #self.search_view.setContentsMargins(0, 0, 0, 0)
 
         self.searchEdit = QLineEdit()
         self.searchEdit.setPlaceholderText("Search...")
         self.searchEdit.textChanged.connect(self.on_search_input)
         self.searchEdit.setMaximumWidth(250);
 
+        self.shortcut_search = QShortcut(QKeySequence('Ctrl+F'), self)
+        self.shortcut_search.activated.connect(self.search_shortcut_activated)
+
+        self.shortcut_exit = QShortcut(QKeySequence('Ctrl+Q'), self)
+        self.shortcut_exit.activated.connect(self.app.quit)
+
         self.search_view.addWidget(self.searchEdit)
 
         self.searchResultList = QListView()
+        self.searchResultList.setEditTriggers(QAbstractItemView.NoEditTriggers)
 
-        self.searchResultModel = QStandardItemModel()
+        self.searchResultModel = SearchResultItemModel()
 
         self.searchResultList.setModelColumn(1)
         self.searchResultList.setModel(self.searchResultModel)
         self.searchResultList.clicked.connect(self.search_result_clicked)
+        self.searchResultList.selectionModel().selectionChanged.connect(self.search_result_selected)
+        self.searchResultList.setSelectionMode(QAbstractItemView.SingleSelection)
+
+        self.searchResultList.setDragDropMode(QAbstractItemView.DragOnly)
+        self.searchResultList.setDragEnabled(True)
 
         self.searchResultList.setMaximumWidth(250);
         self.searchEdit.setMaximumWidth(250);
@@ -153,9 +211,53 @@ class Browser(QDialog):
         grid.addWidget(self.file_view, 0, 1, 1, 3)
         grid.addLayout(self.media_pane, 1, 0, 1, 4)
 
-        self.setLayout(grid)
+        self.main_panel = QWidget()
+        self.main_panel.setLayout(grid)
+        self.setCentralWidget(self.main_panel)
+
+    def _createActions(self):
+        self.exitAction = QAction("E&xit", self)
+        self.exitAction.triggered.connect(self.app.quit)
+
+        self.openConsoleAction = QAction("&Python console", self)
+        self.openConsoleAction.triggered.connect(self.open_console)
+
+        self.openWebsiteAction = QAction("Open &website", self)
+        self.openWebsiteAction.triggered.connect(lambda: QDesktopServices.openUrl(QUrl(WEBSITE_URL)))
+
+    def open_console(self):
+        self.console.show()
+
+    def _createMenuBar(self):
+        menuBar = self.menuBar()
+        self.setMenuBar(menuBar)
+
+        fileMenu = QMenu("&File", self)
+        fileMenu.addAction(self.exitAction)
+        menuBar.addMenu(fileMenu)
+
+        toolsMenu = QMenu("&Tools", self)
+        toolsMenu.addAction(self.openConsoleAction)
+        menuBar.addMenu(toolsMenu)
+
+        helpMenu = QMenu("&Help", self)
+        helpMenu.addAction(self.openWebsiteAction)
+        menuBar.addMenu(helpMenu)
+
+    def search_shortcut_activated(self):
+        self.searchEdit.setFocus()
+        self.searchEdit.selectAll()
 
     def search_result_clicked(self, index):
+        row = index.row()
+
+        fn = index.sibling(row, 0).data()
+        full_path = index.sibling(row, 1).data()
+        self.select_path(full_path)
+        self.play_file(full_path)
+
+    def search_result_selected(self, selection):
+        index = selection.indexes()[0]
         row = index.row()
 
         fn = index.sibling(row, 0).data()
@@ -175,14 +277,26 @@ class Browser(QDialog):
         self.searchTypeTimer.start(500)
 
     def select_path(self, path):
-        print('select path', path)
         idx = self.fsmodel.index(path)
         self.file_view.setCurrentIndex(self.proxyModel.mapFromSource(idx))
 
     def on_play_clicked(self):
-        print('play')
+        if self.mediaPlayer.state() == QMediaPlayer.State.PlayingState:
+            self.mediaPlayer.pause()
+        else:
+            self.mediaPlayer.play()
 
-    def get_selected_fileinfo(self):
+    def on_stop_clicked(self):
+        if self.mediaPlayer.state() != QMediaPlayer.State.StoppedState:
+            self.mediaPlayer.stop()
+
+    def media_state_changed(self, state: QMediaPlayer.State):
+        if state == QMediaPlayer.State.PlayingState:
+            self.playBtn.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
+        else:
+            self.playBtn.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
+
+    def get_selected_fileinfo(self) -> QFileInfo:
         indexes = self.file_view.selectedIndexes()
 
         if not indexes:
@@ -191,28 +305,42 @@ class Browser(QDialog):
         finfo = self.fsmodel.fileInfo(self.proxyModel.mapToSource(index))
         return finfo
 
-    def on_files_selected(self, *args, **kwargs):
+    def on_file_view_clicked(self):
         finfo = self.get_selected_fileinfo()
 
-        if finfo is None:
+        if finfo is None or finfo.isDir():
             return
 
-        self.mediaPlayer.stop()
+        self.play_file(finfo.filePath())
+
+    def on_files_selected(self, selected: QItemSelection, deselected: QItemSelection):
+        indexes = selected.indexes()
+        if not indexes:
+            return
+        index = indexes[0]
+        fspath = self.fsmodel.filePath(self.proxyModel.mapToSource(index))
+        finfo = self.fsmodel.fileInfo(self.proxyModel.mapToSource(index))
 
         if finfo.isDir():
-            return
+            self.mediaPlayer.stop()
+        else:
+            self.play_file(fspath)
 
-        media_path = finfo.filePath()
-
-        self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(media_path)))
+    def play_file(self, path):
+        self.mediaPlayer.stop()
+        self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(path)))
         self.mediaPlayer.play()
 
-        self.playBtn.setEnabled(True)
+    def media_changed(self, media: QMediaContent):
+        filepath = media.request().url().toLocalFile()
+        self.statusBar.showMessage("{}".format(filepath))
 
     def media_position_changed(self, position):
+        self.positionLabel.setText(mediautils.media_time_to_str(position))
         self.media_slider.setValue(position)
 
     def media_duration_changed(self, duration):
+        self.durationLabel.setText(mediautils.media_time_to_str(duration))
         self.media_slider.setRange(0, duration)
 
     def set_media_position(self, position):
@@ -220,22 +348,31 @@ class Browser(QDialog):
 
     def open_file_menu(self, position):
         menu = QMenu()
-        open_action = menu.addAction("Open with system handler")
+
+        open_parent_action = menu.addAction("Show in file browser")
+        open_action = menu.addAction("Open with default application")
+
         action = menu.exec_(self.file_view.mapToGlobal(position))
+        finfo = self.get_selected_fileinfo()
+        path = pathlib.Path(finfo.absoluteFilePath())
+
         if action == open_action:
-            finfo = self.get_selected_fileinfo()
-            os.startfile(finfo.filePath(), 'open')
+            self.mediaPlayer.pause()
+            fileutils.open_file(path)
+        elif action == open_parent_action:
+            fileutils.open_file_parent(path)
 
 
 def main():
     app = QApplication(sys.argv)
 
-    browser = Browser()
+    console = PythonConsole(locals=locals())
+    console.eval_queued()
+
+    browser = Browser(app=app, console=console)
     browser.show()
 
-    console = PythonConsole(locals=locals())
-    console.show()
-    console.eval_queued()
+    console.interpreter.locals['browser'] = browser
 
     sys.exit(app.exec_())
 
