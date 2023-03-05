@@ -398,7 +398,11 @@ class Browser(QMainWindow):
 def main():
     app = QApplication(sys.argv)
 
-    console = PythonConsole(locals=locals())
+    console_locals = {}
+    console_locals.update(locals())
+    console_locals.update(globals())
+
+    console = PythonConsole(locals=console_locals)
     console.eval_queued()
 
     browser = Browser(app=app, console=console)
