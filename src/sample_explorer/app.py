@@ -13,6 +13,7 @@ from pyqtconsole.console import PythonConsole
 from .db import SampleDB
 from . import mediautils
 from . import fileutils
+from .media_slider import MediaSlider
 from . import rc_icons
 
 SUPPORTED_EXTENSIONS = [
@@ -145,7 +146,7 @@ class Browser(QMainWindow):
 
         selection_model.selectionChanged.connect(self.on_files_selected)
 
-        self.media_slider = QSlider(Qt.Horizontal)
+        self.media_slider = MediaSlider(Qt.Horizontal)
         self.media_slider.setRange(0, 0)
         self.media_slider.sliderMoved.connect(self.set_media_position)
 
