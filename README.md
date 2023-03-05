@@ -18,7 +18,13 @@ Note: I didn't really intend to roll my own media browser, but since (Py)QT alre
 is what it is at the moment - a proof of concept until I get to implement all the features I need myself for efficient
 music production. Stay tuned!
 
-## Installation
+## Development
+
+### Requirements
+
+- Python 3.10
+
+### Installation
 
 Install poetry if not already installed:
 
@@ -32,8 +38,14 @@ Then:
 python -m poetry install
 ```
 
-## Running
+### Running
 
 ```shell
 python -m poetry run samplexplore
+```
+
+### Regenerate Qt resources
+
+```
+python -m poetry run pyside2-rcc icons.rc -o src/sample_explorer/rc_icons.py
 ```

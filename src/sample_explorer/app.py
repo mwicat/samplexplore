@@ -3,17 +3,17 @@ import math
 import sys
 import pathlib
 
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
-from PyQt5.QtWidgets import *
-from PyQt5.QtMultimedia import QMediaContent, QMediaPlayer
+from qtpy.QtCore import *
+from qtpy.QtGui import *
+from qtpy.QtWidgets import *
+from qtpy.QtMultimedia import QMediaContent, QMediaPlayer
 
 from pyqtconsole.console import PythonConsole
 
 from .db import SampleDB
 from . import mediautils
 from . import fileutils
-from . import qrc_resources
+from . import rc_icons
 
 SUPPORTED_EXTENSIONS = [
     'wav',
