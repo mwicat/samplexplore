@@ -22,6 +22,8 @@ SUPPORTED_EXTENSIONS = [
     'flac',
 ]
 
+PREVIEW_PLAY_LOCK_TIME = 200
+
 WEBSITE_URL = 'https://github.com/mwicat/sample_explorer'
 
 DB_PATH = '/tmp/sample_files.sqlite'
@@ -359,7 +361,7 @@ class Browser(QMainWindow):
             return
 
         self.play_locked = True
-        QTimer.singleShot(500, self.unlock_play)
+        QTimer.singleShot(PREVIEW_PLAY_LOCK_TIME, self.unlock_play)
 
         self.mediaPlayer.stop()
         self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(path)))
