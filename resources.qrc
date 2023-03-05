@@ -1,0 +1,9 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource>
+    <file alias="arrows-round.svg">resources/arrows-round.svg</file>
+    <file alias="note-sticky.svg">resources/note-sticky.svg</file>
+    <file alias="globe.svg">resources/globe.svg</file>
+    <file alias="times.svg">resources/times.svg</file>
+    <file alias="python.svg">resources/python.svg</file>
+</qresource>
+</RCC>

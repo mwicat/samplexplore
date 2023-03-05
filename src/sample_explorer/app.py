@@ -13,6 +13,7 @@ from pyqtconsole.console import PythonConsole
 from .db import SampleDB
 from . import mediautils
 from . import fileutils
+from . import qrc_resources
 
 SUPPORTED_EXTENSIONS = [
     'wav',
@@ -84,10 +85,8 @@ class RenderTypeProxyModel(QSortFilterProxyModel):
 
 
 class Browser(QMainWindow):
-    def __init__(self, parent=None, console=None, app=None):
-        super(Browser, self).__init__(parent=parent, flags=Qt.WindowStaysOnTopHint)
-
-        #self.setWindowIcon(QIcon('logo.png'))
+    def __init__(self, parent=None, console=None, app=None, flags=Qt.WindowStaysOnTopHint):
+        super(Browser, self).__init__(parent=parent, flags=flags)
 
         self.play_locked = False
 
@@ -99,6 +98,7 @@ class Browser(QMainWindow):
 
         self._createActions()
         self._createMenuBar()
+        self._createToolBars()
 
         self.sample_db = SampleDB(DB_PATH)
 
@@ -218,14 +218,24 @@ class Browser(QMainWindow):
         self.setCentralWidget(self.main_panel)
 
     def _createActions(self):
-        self.exitAction = QAction("E&xit", self)
+        self.exitAction = QAction(QIcon(":times.svg"), "E&xit", self)
         self.exitAction.triggered.connect(self.app.quit)
 
-        self.openConsoleAction = QAction("&Python console", self)
+        self.openConsoleAction = QAction(QIcon(":python.svg"), "&Python console", self)
         self.openConsoleAction.triggered.connect(self.open_console)
 
-        self.openWebsiteAction = QAction("Open &website", self)
+        self.openWebsiteAction = QAction(QIcon(":globe.svg"), "Open &website", self)
         self.openWebsiteAction.triggered.connect(lambda: QDesktopServices.openUrl(QUrl(WEBSITE_URL)))
+
+        self.refreshDbAction = QAction(QIcon(":arrows-round.svg"), "&Refresh search database", self)
+        self.refreshDbAction.triggered.connect(lambda: print('ok'))
+
+        self.toggleOnTop = QAction(QIcon(":note-sticky.svg"), "&Toggle always on top", self)
+        self.toggleOnTop.triggered.connect(self.toggle_window_on_top)
+
+    def toggle_window_on_top(self):
+        # self.setWindowFlags(self.windowFlags() & ~Qt.WindowStaysOnTopHint)
+        pass
 
     def open_console(self):
         self.console.show()
@@ -245,6 +255,13 @@ class Browser(QMainWindow):
         helpMenu = QMenu("&Help", self)
         helpMenu.addAction(self.openWebsiteAction)
         menuBar.addMenu(helpMenu)
+
+    def _createToolBars(self):
+        fileToolBar = self.addToolBar("File")
+        fileToolBar.setMovable(False)
+
+        fileToolBar.addAction(self.refreshDbAction)
+        fileToolBar.addAction(self.toggleOnTop)
 
     def search_shortcut_activated(self):
         self.searchEdit.setFocus()
