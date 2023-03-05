@@ -18,6 +18,11 @@ Note: I didn't really intend to roll my own media browser, but since (Py)QT alre
 is what it is at the moment - a proof of concept until I get to implement all the features I need myself for efficient
 music production. Stay tuned!
 
+# Acknowledgments
+
+- Icons sourced from [Glyphs Icons Design System](https://glyphs.fyi/)
+- Python console widget by [pyqtconsole project](https://github.com/pyqtconsole/pyqtconsole)
+
 ## Development
 
 ### Requirements
