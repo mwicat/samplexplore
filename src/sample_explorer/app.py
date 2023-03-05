@@ -96,6 +96,8 @@ class Browser(QMainWindow):
         self.statusBar = QStatusBar()
         self.setStatusBar(self.statusBar)
 
+        self.setWindowIcon(QIcon(':headphones.svg'))
+
         self._createActions()
         self._createMenuBar()
         self._createToolBars()

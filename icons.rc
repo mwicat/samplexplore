@@ -5,5 +5,6 @@
     <file alias="globe.svg">resources/globe.svg</file>
     <file alias="times.svg">resources/times.svg</file>
     <file alias="python.svg">resources/python.svg</file>
+    <file alias="headphones.svg">resources/headphones.svg</file>
 </qresource>
 </RCC>
