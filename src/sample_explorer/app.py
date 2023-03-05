@@ -89,6 +89,8 @@ class Browser(QMainWindow):
 
         #self.setWindowIcon(QIcon('logo.png'))
 
+        self.play_locked = False
+
         self.console = console
         self.app = app
 
@@ -253,6 +255,7 @@ class Browser(QMainWindow):
 
         fn = index.sibling(row, 0).data()
         full_path = index.sibling(row, 1).data()
+
         self.select_path(full_path)
         self.play_file(full_path)
 
@@ -262,7 +265,9 @@ class Browser(QMainWindow):
 
         fn = index.sibling(row, 0).data()
         full_path = index.sibling(row, 1).data()
+
         self.select_path(full_path)
+        self.play_file(full_path)
 
     def perform_search(self):
         self.searchResultModel.clear()
@@ -278,7 +283,8 @@ class Browser(QMainWindow):
 
     def select_path(self, path):
         idx = self.fsmodel.index(path)
-        self.file_view.setCurrentIndex(self.proxyModel.mapFromSource(idx))
+        file_view_idx = self.proxyModel.mapFromSource(idx)
+        QTimer.singleShot(0, lambda: self.file_view.setCurrentIndex(file_view_idx))
 
     def on_play_clicked(self):
         if self.mediaPlayer.state() == QMediaPlayer.State.PlayingState:
@@ -318,15 +324,24 @@ class Browser(QMainWindow):
         if not indexes:
             return
         index = indexes[0]
-        fspath = self.fsmodel.filePath(self.proxyModel.mapToSource(index))
+        full_path = self.fsmodel.filePath(self.proxyModel.mapToSource(index))
         finfo = self.fsmodel.fileInfo(self.proxyModel.mapToSource(index))
 
         if finfo.isDir():
             self.mediaPlayer.stop()
         else:
-            self.play_file(fspath)
+            self.play_file(full_path)
+
+    def unlock_play(self):
+        self.play_locked = False
 
     def play_file(self, path):
+        if self.play_locked:
+            return
+
+        self.play_locked = True
+        QTimer.singleShot(500, self.unlock_play)
+
         self.mediaPlayer.stop()
         self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(path)))
         self.mediaPlayer.play()
