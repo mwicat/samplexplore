@@ -18,3 +18,7 @@ samplexplore = "sample_explorer.app:main"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.group.dev.dependencies]
+pyinstaller = "^5.8.0"
+pillow = "^9.4.0"
