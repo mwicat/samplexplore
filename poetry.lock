@@ -13,6 +13,18 @@ files = [
 ]
 
 [[package]]
+name = "formlayout"
+version = "1.2.0"
+description = "The most easy way to create Qt form dialogs and widgets with Python"
+category = "main"
+optional = false
+python-versions = "*"
+files = [
+    {file = "formlayout-1.2.0-py2.py3-none-any.whl", hash = "sha256:703dedc1c1b2a4309c6a1f4e70a526ed9c52de656cb4960e5378aae3985f2a4c"},
+    {file = "formlayout-1.2.0.tar.gz", hash = "sha256:2816a408c5a78939f917dd0671b6f19e5d21aecc8f42f9a90b604a1481817e32"},
+]
+
+[[package]]
 name = "jedi"
 version = "0.18.2"
 description = "An autocompletion tool for Python that can be used for text editors."
@@ -325,4 +337,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.11"
-content-hash = "199f5a936eccf6c78950061dc43d11fe0add46bbad7a90497f83665a21cf1d6e"
+content-hash = "8b4c9a38e8dcfe0c9bb69f71d80f1063677718fe895ad58ef51fb3b4e471ca9c"

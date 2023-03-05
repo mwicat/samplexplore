@@ -15,6 +15,8 @@ from . import mediautils
 from . import fileutils
 from .media_slider import MediaSlider
 from . import rc_icons
+from .settings import SettingsDialog
+
 
 SUPPORTED_EXTENSIONS = [
     'wav',
@@ -22,7 +24,7 @@ SUPPORTED_EXTENSIONS = [
     'mp3',
     'flac',
 ]
-
+8
 PREVIEW_PLAY_LOCK_TIME = 200
 
 WEBSITE_URL = 'https://github.com/mwicat/sample_explorer'
@@ -88,8 +90,11 @@ class RenderTypeProxyModel(QSortFilterProxyModel):
 
 
 class Browser(QMainWindow):
-    def __init__(self, parent=None, console=None, app=None, flags=Qt.WindowStaysOnTopHint):
-        super(Browser, self).__init__(parent=parent, flags=flags)
+    def __init__(self, settings_dialog, parent=None, console=None, app=None):
+        super(Browser, self).__init__(parent=parent)
+
+        self.settings_dialog = settings_dialog
+        self.settings_dialog.samplesDirChanged.connect(self.set_samples_directory)
 
         self.play_locked = False
 
@@ -110,11 +115,7 @@ class Browser(QMainWindow):
         self.resize(*INITIAL_SIZE)
         self.setWindowTitle('Sample browser')
 
-        path = 'd:/produkcja/sample'
         self.fsmodel = QFileSystemModel()
-        self.fsmodel.setRootPath('/')
-
-        og_index = self.fsmodel.index(path)
 
         self.mediaPlayer = QMediaPlayer()
         self.mediaPlayer.positionChanged.connect(self.media_position_changed)
@@ -136,9 +137,6 @@ class Browser(QMainWindow):
         self.file_view.setDragEnabled(True)
         self.file_view.setContextMenuPolicy(Qt.CustomContextMenu)
         self.file_view.customContextMenuRequested.connect(self.open_file_menu)
-
-        root_index = self.proxyModel.mapFromSource(og_index)
-        self.file_view.setRootIndex(root_index)
 
         self.file_view.clicked.connect(self.on_file_view_clicked)
 
@@ -222,7 +220,19 @@ class Browser(QMainWindow):
         self.main_panel.setLayout(grid)
         self.setCentralWidget(self.main_panel)
 
+        self.set_samples_directory(r'D:\produkcja\sample')
+
+    def set_samples_directory(self, path):
+        print('set samples directory')
+        self.fsmodel.setRootPath('/')
+        og_index = self.fsmodel.index(path)
+        root_index = self.proxyModel.mapFromSource(og_index)
+        self.file_view.setRootIndex(root_index)
+
     def _createActions(self):
+        self.settingsAction = QAction(QIcon(":settings.svg"), "Se&ttings", self)
+        self.settingsAction.triggered.connect(self.open_settings)
+
         self.exitAction = QAction(QIcon(":times.svg"), "E&xit", self)
         self.exitAction.triggered.connect(self.app.quit)
 
@@ -238,6 +248,9 @@ class Browser(QMainWindow):
         self.toggleOnTop = QAction(QIcon(":note-sticky.svg"), "&Toggle always on top", self)
         self.toggleOnTop.triggered.connect(self.toggle_window_on_top)
 
+    def open_settings(self):
+        self.settings_dialog.exec_()
+
     def toggle_window_on_top(self):
         # self.setWindowFlags(self.windowFlags() & ~Qt.WindowStaysOnTopHint)
         pass
@@ -250,6 +263,7 @@ class Browser(QMainWindow):
         self.setMenuBar(menuBar)
 
         fileMenu = QMenu("&File", self)
+        fileMenu.addAction(self.settingsAction)
         fileMenu.addAction(self.exitAction)
         menuBar.addMenu(fileMenu)
 
@@ -266,6 +280,7 @@ class Browser(QMainWindow):
         fileToolBar.setMovable(False)
 
         fileToolBar.addAction(self.refreshDbAction)
+        fileToolBar.addAction(self.settingsAction)
         fileToolBar.addAction(self.toggleOnTop)
 
     def search_shortcut_activated(self):
@@ -410,7 +425,8 @@ def main():
     console = PythonConsole(locals=console_locals)
     console.eval_queued()
 
-    browser = Browser(app=app, console=console)
+    settings_dialog = SettingsDialog()
+    browser = Browser(settings_dialog, app=app, console=console)
     browser.show()
 
     console.interpreter.locals['browser'] = browser
