@@ -10,12 +10,13 @@ from qtpy.QtMultimedia import QMediaContent, QMediaPlayer
 
 from pyqtconsole.console import PythonConsole
 
-from .db import SampleDB
+from .db_manager import DBManager
+
 from . import mediautils
 from . import fileutils
 from .media_slider import MediaSlider
 from . import rc_icons
-from .settings import SettingsDialog
+from .settings import SettingsManager
 
 
 SUPPORTED_EXTENSIONS = [
@@ -29,8 +30,8 @@ PREVIEW_PLAY_LOCK_TIME = 200
 
 WEBSITE_URL = 'https://github.com/mwicat/sample_explorer'
 
-DB_PATH = '/tmp/sample_files.sqlite'
-SAMPLES_DIRECTORY = 'd:/produkcja/sample'
+DB_PATH = '/tmp/samplesbdb.sqlite'
+
 
 INITIAL_SIZE = 1000, 600
 
@@ -49,6 +50,7 @@ class SearchResultItemModel(QStandardItemModel):
             urls.append(QUrl.fromLocalFile(full_path))
         mimedata.setUrls(urls)
         return mimedata
+
 
 class RenderTypeProxyModel(QSortFilterProxyModel):
     def __init__(self):
@@ -91,11 +93,13 @@ class RenderTypeProxyModel(QSortFilterProxyModel):
 
 
 class Browser(QMainWindow):
-    def __init__(self, settings_dialog, parent=None, console=None, app=None):
+    def __init__(self, settings_manager, parent=None, console=None, app=None):
         super(Browser, self).__init__(parent=parent)
 
-        self.settings_dialog = settings_dialog
-        self.settings_dialog.samplesDirChanged.connect(self.set_samples_directory)
+        self.settings_manager = settings_manager
+        self.settings_manager.samplesDirChanged.connect(self.on_samples_directory_changed)
+
+        #self.set_samples_directory(self.settings_manager.samples_directory)
 
         self.play_locked = False
 
@@ -111,7 +115,8 @@ class Browser(QMainWindow):
         self._createMenuBar()
         self._createToolBars()
 
-        self.sample_db = SampleDB(DB_PATH, SAMPLES_DIRECTORY)
+        self.db_manager = DBManager()
+        self.db_manager.connect(DB_PATH)
 
         self.resize(*INITIAL_SIZE)
         self.setWindowTitle('Sample browser')
@@ -221,16 +226,22 @@ class Browser(QMainWindow):
         self.main_panel.setLayout(grid)
         self.setCentralWidget(self.main_panel)
 
-        self.set_samples_directory(r'D:\produkcja\sample')
+        if settings_manager.samples_directory is None:
+            settings_manager.show_settings_dialog()
+        else:
+            self.set_samples_directory(settings_manager.samples_directory)
 
     def on_samples_directory_changed(self, path):
+        self.refresh_db()
         self.set_samples_directory(path)
 
     def refresh_db(self):
-        self.sample_db.rebuild_files_table()
+        self.db_manager.rebuild_files_table(
+            self.settings_manager.samples_directory,
+            result_callback=lambda: QMessageBox.information(self, 'czesc', 'czesc'))
 
     def set_samples_directory(self, path):
-        print('set samples directory')
+        print('set samples directory', path)
         self.fsmodel.setRootPath('/')
         og_index = self.fsmodel.index(path)
         root_index = self.proxyModel.mapFromSource(og_index)
@@ -256,7 +267,7 @@ class Browser(QMainWindow):
         self.toggleOnTop.triggered.connect(self.toggle_window_on_top)
 
     def open_settings(self):
-        self.settings_dialog.exec_()
+        self.settings_manager.show_settings_dialog()
 
     def toggle_window_on_top(self):
         # self.setWindowFlags(self.windowFlags() & ~Qt.WindowStaysOnTopHint)
@@ -313,13 +324,19 @@ class Browser(QMainWindow):
         self.select_path(full_path)
         self.play_file(full_path)
 
+    def on_search_results(self, results):
+        for result in results:
+            self.searchResultModel.appendRow([
+                QStandardItem(result['filename']),
+                QStandardItem(result['full_path']),
+            ])
+
     def perform_search(self):
         self.searchResultModel.clear()
 
         if self.search_phrase:
-            results = self.sample_db.search_file(self.search_phrase)
-            for result in results:
-                self.searchResultModel.appendRow([QStandardItem(result[1]), QStandardItem(result[0])])
+            self.db_manager.search_file(
+                self.search_phrase, result_callback=self.on_search_results)
 
     def on_search_input(self, search_phrase):
         self.search_phrase = search_phrase
@@ -432,8 +449,10 @@ def main():
     console = PythonConsole(locals=console_locals)
     console.eval_queued()
 
-    settings_dialog = SettingsDialog()
-    browser = Browser(settings_dialog, app=app, console=console)
+    settings_manager = SettingsManager()
+    settings_manager.read_settings()
+
+    browser = Browser(settings_manager, app=app, console=console)
     browser.show()
 
     console.interpreter.locals['browser'] = browser

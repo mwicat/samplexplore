@@ -51,20 +51,20 @@ class SelectDirectoryWidget(QWidget):
 
 class SettingsDialog(QDialog):
 
-    samplesDirChanged = Signal(str)
-
-    def __init__(self, parent=None):
+    def __init__(self, settings_manager, parent=None):
         super(SettingsDialog, self).__init__(parent=parent)
 
-        self.samples_directory = None
-        self.read_settings()
+        self.settings_manager = settings_manager
 
         self.setWindowTitle("Settings")
         self.setWindowIcon(QIcon(":settings.svg"))
 
         self.formlayout = layout = QFormLayout(self)
 
-        self.select_directory_widget = SelectDirectoryWidget(self.samples_directory)
+        samples_dir = self.settings_manager.samples_directory
+
+        self.select_directory_widget = SelectDirectoryWidget(
+            samples_dir if samples_dir is not None else '')
         self.formlayout.addRow('Samples directory:',  self.select_directory_widget)
 
         self.bbox = bbox = QDialogButtonBox()
@@ -84,19 +84,35 @@ class SettingsDialog(QDialog):
 
         samples_directory = self.select_directory_widget.text()
 
-        if samples_directory != self.samples_directory:
-            self.samples_directory = samples_directory
-            self.samplesDirChanged.emit(self.samples_directory)
-
-        self.write_settings()
+        self.settings_manager.samples_directory = samples_directory
+        self.settings_manager.write_settings()
 
         return super(SettingsDialog, self).accept()
+
+
+class SettingsManager(QObject):
+
+    samplesDirChanged = Signal(str)
+
+    def __init__(self, parent=None):
+        super(SettingsManager, self).__init__(parent=parent)
+        self._samples_directory = None
+
+    @property
+    def samples_directory(self):
+        return self._samples_directory
+
+    @samples_directory.setter
+    def samples_directory(self, new_samples_directory):
+        if new_samples_directory != self._samples_directory:
+            self._samples_directory = new_samples_directory
+            self.samplesDirChanged.emit(self._samples_directory)
 
     def write_settings(self):
         settings = QSettings("mwicat", "samplexplore")
         settings.beginGroup("Settings")
 
-        settings.setValue("samples_directory", self.samples_directory)
+        settings.setValue("samples_directory", self._samples_directory)
 
         settings.endGroup()
 
@@ -104,6 +120,10 @@ class SettingsDialog(QDialog):
         settings = QSettings("mwicat", "samplexplore")
         settings.beginGroup("Settings")
 
-        self.samples_directory = settings.value("samples_directory")
+        self._samples_directory = settings.value("samples_directory")
 
         settings.endGroup()
+
+    def show_settings_dialog(self):
+        settings_dialog = SettingsDialog(self)
+        settings_dialog.exec_()
