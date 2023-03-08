@@ -11,6 +11,8 @@ class SelectDirectoryWidget(QWidget):
         super(SelectDirectoryWidget, self).__init__()
 
         layout = QHBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+
         self.valid = False
 
         self.value = value
@@ -63,7 +65,7 @@ class SettingsDialog(QDialog):
         self.formlayout = layout = QFormLayout(self)
 
         self.select_directory_widget = SelectDirectoryWidget(self.samples_directory)
-        self.formlayout.addRow(QLabel('Samples directory:'),  self.select_directory_widget)
+        self.formlayout.addRow('Samples directory:',  self.select_directory_widget)
 
         self.bbox = bbox = QDialogButtonBox()
         self.bbox.setStandardButtons(QDialogButtonBox.Cancel | QDialogButtonBox.Ok)

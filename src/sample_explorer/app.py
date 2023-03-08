@@ -30,6 +30,7 @@ PREVIEW_PLAY_LOCK_TIME = 200
 WEBSITE_URL = 'https://github.com/mwicat/sample_explorer'
 
 DB_PATH = '/tmp/sample_files.sqlite'
+SAMPLES_DIRECTORY = 'd:/produkcja/sample'
 
 INITIAL_SIZE = 1000, 600
 
@@ -110,7 +111,7 @@ class Browser(QMainWindow):
         self._createMenuBar()
         self._createToolBars()
 
-        self.sample_db = SampleDB(DB_PATH)
+        self.sample_db = SampleDB(DB_PATH, SAMPLES_DIRECTORY)
 
         self.resize(*INITIAL_SIZE)
         self.setWindowTitle('Sample browser')
@@ -222,6 +223,12 @@ class Browser(QMainWindow):
 
         self.set_samples_directory(r'D:\produkcja\sample')
 
+    def on_samples_directory_changed(self, path):
+        self.set_samples_directory(path)
+
+    def refresh_db(self):
+        self.sample_db.rebuild_files_table()
+
     def set_samples_directory(self, path):
         print('set samples directory')
         self.fsmodel.setRootPath('/')
@@ -243,7 +250,7 @@ class Browser(QMainWindow):
         self.openWebsiteAction.triggered.connect(lambda: QDesktopServices.openUrl(QUrl(WEBSITE_URL)))
 
         self.refreshDbAction = QAction(QIcon(":arrows-round.svg"), "&Refresh search database", self)
-        self.refreshDbAction.triggered.connect(lambda: print('ok'))
+        self.refreshDbAction.triggered.connect(self.refresh_db)
 
         self.toggleOnTop = QAction(QIcon(":note-sticky.svg"), "&Toggle always on top", self)
         self.toggleOnTop.triggered.connect(self.toggle_window_on_top)
