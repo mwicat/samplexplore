@@ -10,11 +10,14 @@ from qtpy.QtMultimedia import QMediaContent, QMediaPlayer
 
 from pyqtconsole.console import PythonConsole
 
-from .db import SampleDB
+from .db_manager import DBManager
+
 from . import mediautils
 from . import fileutils
 from .media_slider import MediaSlider
 from . import rc_icons
+from .settings import SettingsManager
+
 
 SUPPORTED_EXTENSIONS = [
     'wav',
@@ -22,12 +25,13 @@ SUPPORTED_EXTENSIONS = [
     'mp3',
     'flac',
 ]
-
+8
 PREVIEW_PLAY_LOCK_TIME = 200
 
 WEBSITE_URL = 'https://github.com/mwicat/sample_explorer'
 
-DB_PATH = '/tmp/sample_files.sqlite'
+DB_PATH = '/tmp/samplesbdb.sqlite'
+
 
 INITIAL_SIZE = 1000, 600
 
@@ -46,6 +50,7 @@ class SearchResultItemModel(QStandardItemModel):
             urls.append(QUrl.fromLocalFile(full_path))
         mimedata.setUrls(urls)
         return mimedata
+
 
 class RenderTypeProxyModel(QSortFilterProxyModel):
     def __init__(self):
@@ -88,10 +93,16 @@ class RenderTypeProxyModel(QSortFilterProxyModel):
 
 
 class Browser(QMainWindow):
-    def __init__(self, parent=None, console=None, app=None, flags=Qt.WindowStaysOnTopHint):
-        super(Browser, self).__init__(parent=parent, flags=flags)
+    def __init__(self, settings_manager, parent=None, console=None, app=None):
+        super(Browser, self).__init__(parent=parent)
+
+        self.settings_manager = settings_manager
+        self.settings_manager.samplesDirChanged.connect(self.on_samples_directory_changed)
+
+        #self.set_samples_directory(self.settings_manager.samples_directory)
 
         self.play_locked = False
+        self.search_phrase = None
 
         self.console = console
         self.app = app
@@ -105,16 +116,13 @@ class Browser(QMainWindow):
         self._createMenuBar()
         self._createToolBars()
 
-        self.sample_db = SampleDB(DB_PATH)
+        self.db_manager = DBManager()
+        self.db_manager.connect(DB_PATH)
 
         self.resize(*INITIAL_SIZE)
         self.setWindowTitle('Sample browser')
 
-        path = 'd:/produkcja/sample'
         self.fsmodel = QFileSystemModel()
-        self.fsmodel.setRootPath('/')
-
-        og_index = self.fsmodel.index(path)
 
         self.mediaPlayer = QMediaPlayer()
         self.mediaPlayer.positionChanged.connect(self.media_position_changed)
@@ -136,9 +144,6 @@ class Browser(QMainWindow):
         self.file_view.setDragEnabled(True)
         self.file_view.setContextMenuPolicy(Qt.CustomContextMenu)
         self.file_view.customContextMenuRequested.connect(self.open_file_menu)
-
-        root_index = self.proxyModel.mapFromSource(og_index)
-        self.file_view.setRootIndex(root_index)
 
         self.file_view.clicked.connect(self.on_file_view_clicked)
 
@@ -222,7 +227,39 @@ class Browser(QMainWindow):
         self.main_panel.setLayout(grid)
         self.setCentralWidget(self.main_panel)
 
+        if settings_manager.samples_directory is None:
+            settings_manager.show_settings_dialog()
+        else:
+            self.set_samples_directory(settings_manager.samples_directory)
+
+    def show_status(self, text):
+        self.statusBar.showMessage(text)
+
+    def on_samples_directory_changed(self, path):
+        self.refresh_db()
+        self.set_samples_directory(path)
+
+    def refresh_db(self):
+        self.show_status('Refreshing search database...')
+        self.db_manager.rebuild_files_table(
+            self.settings_manager.samples_directory,
+            result_callback=self.on_search_db_refreshed)
+
+    def on_search_db_refreshed(self):
+        self.show_status('Completed refresh of search database!')
+        self.perform_search()
+
+    def set_samples_directory(self, path):
+        print('set samples directory', path)
+        self.fsmodel.setRootPath('/')
+        og_index = self.fsmodel.index(path)
+        root_index = self.proxyModel.mapFromSource(og_index)
+        self.file_view.setRootIndex(root_index)
+
     def _createActions(self):
+        self.settingsAction = QAction(QIcon(":settings.svg"), "Se&ttings", self)
+        self.settingsAction.triggered.connect(self.open_settings)
+
         self.exitAction = QAction(QIcon(":times.svg"), "E&xit", self)
         self.exitAction.triggered.connect(self.app.quit)
 
@@ -233,10 +270,13 @@ class Browser(QMainWindow):
         self.openWebsiteAction.triggered.connect(lambda: QDesktopServices.openUrl(QUrl(WEBSITE_URL)))
 
         self.refreshDbAction = QAction(QIcon(":arrows-round.svg"), "&Refresh search database", self)
-        self.refreshDbAction.triggered.connect(lambda: print('ok'))
+        self.refreshDbAction.triggered.connect(self.refresh_db)
 
         self.toggleOnTop = QAction(QIcon(":note-sticky.svg"), "&Toggle always on top", self)
         self.toggleOnTop.triggered.connect(self.toggle_window_on_top)
+
+    def open_settings(self):
+        self.settings_manager.show_settings_dialog()
 
     def toggle_window_on_top(self):
         # self.setWindowFlags(self.windowFlags() & ~Qt.WindowStaysOnTopHint)
@@ -250,6 +290,7 @@ class Browser(QMainWindow):
         self.setMenuBar(menuBar)
 
         fileMenu = QMenu("&File", self)
+        fileMenu.addAction(self.settingsAction)
         fileMenu.addAction(self.exitAction)
         menuBar.addMenu(fileMenu)
 
@@ -266,7 +307,8 @@ class Browser(QMainWindow):
         fileToolBar.setMovable(False)
 
         fileToolBar.addAction(self.refreshDbAction)
-        fileToolBar.addAction(self.toggleOnTop)
+        fileToolBar.addAction(self.settingsAction)
+        # fileToolBar.addAction(self.toggleOnTop)
 
     def search_shortcut_activated(self):
         self.searchEdit.setFocus()
@@ -282,7 +324,10 @@ class Browser(QMainWindow):
         self.play_file(full_path)
 
     def search_result_selected(self, selection):
-        index = selection.indexes()[0]
+        indexes = selection.indexes()
+        if not indexes:
+            return
+        index = indexes[0]
         row = index.row()
 
         fn = index.sibling(row, 0).data()
@@ -291,13 +336,21 @@ class Browser(QMainWindow):
         self.select_path(full_path)
         self.play_file(full_path)
 
+    def on_search_results(self, results):
+        for result in results:
+            self.searchResultModel.appendRow([
+                QStandardItem(result['filename']),
+                QStandardItem(result['full_path']),
+            ])
+
     def perform_search(self):
         self.searchResultModel.clear()
 
-        if self.search_phrase:
-            results = self.sample_db.search_file(self.search_phrase)
-            for result in results:
-                self.searchResultModel.appendRow([QStandardItem(result[1]), QStandardItem(result[0])])
+        if not self.search_phrase:
+            return
+
+        self.db_manager.search_file(
+            self.search_phrase, result_callback=self.on_search_results)
 
     def on_search_input(self, search_phrase):
         self.search_phrase = search_phrase
@@ -410,7 +463,10 @@ def main():
     console = PythonConsole(locals=console_locals)
     console.eval_queued()
 
-    browser = Browser(app=app, console=console)
+    settings_manager = SettingsManager()
+    settings_manager.read_settings()
+
+    browser = Browser(settings_manager, app=app, console=console)
     browser.show()
 
     console.interpreter.locals['browser'] = browser
