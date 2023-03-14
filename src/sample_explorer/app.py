@@ -102,6 +102,7 @@ class Browser(QMainWindow):
         #self.set_samples_directory(self.settings_manager.samples_directory)
 
         self.play_locked = False
+        self.search_phrase = None
 
         self.console = console
         self.app = app
@@ -231,14 +232,22 @@ class Browser(QMainWindow):
         else:
             self.set_samples_directory(settings_manager.samples_directory)
 
+    def show_status(self, text):
+        self.statusBar.showMessage(text)
+
     def on_samples_directory_changed(self, path):
         self.refresh_db()
         self.set_samples_directory(path)
 
     def refresh_db(self):
+        self.show_status('Refreshing search database...')
         self.db_manager.rebuild_files_table(
             self.settings_manager.samples_directory,
-            result_callback=lambda: QMessageBox.information(self, 'czesc', 'czesc'))
+            result_callback=self.on_search_db_refreshed)
+
+    def on_search_db_refreshed(self):
+        self.show_status('Completed refresh of search database!')
+        self.perform_search()
 
     def set_samples_directory(self, path):
         print('set samples directory', path)
@@ -299,7 +308,7 @@ class Browser(QMainWindow):
 
         fileToolBar.addAction(self.refreshDbAction)
         fileToolBar.addAction(self.settingsAction)
-        fileToolBar.addAction(self.toggleOnTop)
+        # fileToolBar.addAction(self.toggleOnTop)
 
     def search_shortcut_activated(self):
         self.searchEdit.setFocus()
@@ -315,7 +324,10 @@ class Browser(QMainWindow):
         self.play_file(full_path)
 
     def search_result_selected(self, selection):
-        index = selection.indexes()[0]
+        indexes = selection.indexes()
+        if not indexes:
+            return
+        index = indexes[0]
         row = index.row()
 
         fn = index.sibling(row, 0).data()
@@ -334,9 +346,11 @@ class Browser(QMainWindow):
     def perform_search(self):
         self.searchResultModel.clear()
 
-        if self.search_phrase:
-            self.db_manager.search_file(
-                self.search_phrase, result_callback=self.on_search_results)
+        if not self.search_phrase:
+            return
+
+        self.db_manager.search_file(
+            self.search_phrase, result_callback=self.on_search_results)
 
     def on_search_input(self, search_phrase):
         self.search_phrase = search_phrase

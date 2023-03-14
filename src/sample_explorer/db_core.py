@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import re
 import os
 
 from peewee import *
@@ -80,6 +81,10 @@ def create_tables():
 
 
 def search_file(phrase):
+    phrase = re.sub(r"[\"\'.\*]%&", ' ', phrase).strip()
+    if not phrase:
+        return
+
     q = (Files
             .select()
             .join(

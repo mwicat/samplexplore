@@ -41,7 +41,7 @@ class SelectDirectoryWidget(QWidget):
         w.setStyleSheet('background-color: {};'.format(color))
 
     def getfile(self):
-        name = QFileDialog.getExistingDirectory(None, 'Select directory')
+        name = QFileDialog.getExistingDirectory(self, 'Select directory', self.value)
         if name:
             self.lineedit.setText(name)
 
@@ -118,6 +118,8 @@ class SettingsManager(QObject):
 
     def read_settings(self):
         settings = QSettings("mwicat", "samplexplore")
+        print('settings location', settings.fileName())
+
         settings.beginGroup("Settings")
 
         self._samples_directory = settings.value("samples_directory")

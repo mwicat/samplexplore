@@ -52,10 +52,13 @@ class DBManager(QObject):
             phrase,
             finished_callback=None,
             result_callback=None):
-        worker = Worker(
-            self.wait_async,
-            lambda: [model_to_dict(m) for m in db_core.search_file(phrase)]
-        )
+        def run():
+            res = db_core.search_file(phrase)
+            if res is not None:
+                return [model_to_dict(m) for m in res]
+            else:
+                return []
+        worker = Worker(self.wait_async, run)
         worker.signals.finished.connect(finished_callback)
         worker.signals.result.connect(result_callback)
         self.threadpool.start(worker)
