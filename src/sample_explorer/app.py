@@ -6,7 +6,7 @@ import pathlib
 from qtpy.QtCore import *
 from qtpy.QtGui import *
 from qtpy.QtWidgets import *
-from qtpy.QtMultimedia import QMediaContent, QMediaPlayer
+from qtpy.QtMultimedia import QMediaContent, QMediaPlaylist, QMediaPlayer
 
 from pyqtconsole.console import PythonConsole
 
@@ -131,6 +131,9 @@ class Browser(QMainWindow):
         self.mediaPlayer.durationChanged.connect(self.media_duration_changed)
         self.mediaPlayer.mediaChanged.connect(self.media_changed)
 
+        self.mediaPlaylist = QMediaPlaylist()
+        self.mediaPlayer.setPlaylist(self.mediaPlaylist)
+
         self.proxyModel = RenderTypeProxyModel()
         self.proxyModel.setSourceModel(self.fsmodel)
 
@@ -170,6 +173,13 @@ class Browser(QMainWindow):
 
         self.media_pane.addWidget(self.stopBtn)
 
+        self.loopBtn = QPushButton()
+        self.loopBtn.setCheckable(True)
+        self.loopBtn.setIcon(QIcon(":repeat.svg"))
+        self.loopBtn.toggled.connect(self.on_loop_toggled)
+
+        self.media_pane.addWidget(self.loopBtn)
+
         self.positionLabel = QLabel('--:--')
         self.media_pane.addWidget(self.positionLabel)
 
@@ -196,6 +206,9 @@ class Browser(QMainWindow):
 
         self.shortcut_exit = QShortcut(QKeySequence('Ctrl+Q'), self)
         self.shortcut_exit.activated.connect(self.app.quit)
+
+        self.shortcut_loop = QShortcut(QKeySequence('Ctrl+L'), self)
+        self.shortcut_loop.activated.connect(self.on_loop_shortcut)
 
         self.search_view.addWidget(self.searchEdit)
 
@@ -371,6 +384,17 @@ class Browser(QMainWindow):
         if self.mediaPlayer.state() != QMediaPlayer.State.StoppedState:
             self.mediaPlayer.stop()
 
+    def on_loop_shortcut(self):
+        self.loopBtn.toggle()
+
+    def on_loop_toggled(self, checked):
+        if checked:
+            self.mediaPlaylist.setPlaybackMode(QMediaPlaylist.Loop)
+            self.loopBtn.setIcon(QIcon(":repeat-on.svg"))
+        else:
+            self.mediaPlaylist.setPlaybackMode(QMediaPlaylist.CurrentItemOnce)
+            self.loopBtn.setIcon(QIcon(":repeat.svg"))
+
     def media_state_changed(self, state: QMediaPlayer.State):
         if state == QMediaPlayer.State.PlayingState:
             self.playBtn.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
@@ -418,7 +442,10 @@ class Browser(QMainWindow):
         QTimer.singleShot(PREVIEW_PLAY_LOCK_TIME, self.unlock_play)
 
         self.mediaPlayer.stop()
-        self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(path)))
+
+        self.mediaPlaylist.clear()
+        self.mediaPlaylist.addMedia(QMediaContent(QUrl.fromLocalFile(path)))
+
         self.mediaPlayer.play()
 
     def media_changed(self, media: QMediaContent):

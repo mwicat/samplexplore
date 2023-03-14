@@ -7,5 +7,7 @@
     <file alias="python.svg">resources/python.svg</file>
     <file alias="headphones.svg">resources/headphones.svg</file>
     <file alias="settings.svg">resources/settings.svg</file>
+    <file alias="repeat.svg">resources/repeat.svg</file>
+    <file alias="repeat-on.svg">resources/repeat-on.svg</file>
 </qresource>
 </RCC>
