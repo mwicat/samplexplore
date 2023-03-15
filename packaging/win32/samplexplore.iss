@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "Samplexplore"
-#define MyAppVersion "0.9"
+#define MyAppVersion "0.8"
 #define MyAppPublisher "mwicat"
 #define MyAppURL "https://github.com/mwicat/samplexplore"
 #define MyAppExeName "samplexplore.exe"
