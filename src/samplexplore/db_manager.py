@@ -27,7 +27,11 @@ class DBManager(QObject):
         return self.tpe.submit(fn, *args, **kwargs).result()
 
     def connect(self, db_path):
-        worker = Worker(self.wait_async, db_core.connect, db_path)
+        def db_connect():
+            db_core.connect(db_path)
+            db_core.create_tables()
+
+        worker = Worker(self.wait_async, db_connect)
         self.threadpool.start(worker)
 
     def rebuild_files_table(
