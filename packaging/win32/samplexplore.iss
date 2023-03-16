@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "Samplexplore"
-#define MyAppVersion "0.8"
+#define MyAppVersion "0.9.0"
 #define MyAppPublisher "mwicat"
 #define MyAppURL "https://github.com/mwicat/samplexplore"
 #define MyAppExeName "samplexplore.exe"
@@ -37,8 +37,8 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "..\..\build\samplexplore\windows\app\src\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\..\build\samplexplore\windows\app\src\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\..\build\exe.win-amd64-3.10\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\build\exe.win-amd64-3.10\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]

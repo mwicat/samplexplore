@@ -21,34 +21,5 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.group.dev.dependencies]
-briefcase = "^0.3"
+cx_Freeze = "^6.14"
 ipython = "^8"
-
-[tool.briefcase]
-project_name = "samplexplore"
-bundle = "com.mwicat"
-icon = "resources/headphones"
-version = "0.9.0"
-url = "https://github.com/mwicat/samplexplore"
-license = "MIT"
-author = 'Marek Wiewiorski'
-author_email = "marek@mwicat.com"
-
-[tool.briefcase.app.samplexplore]
-formal_name = "Samplexplore"
-description = "Straightforward audio sample browser/previewer based on filesystem hierarchy"
-sources = ['src/samplexplore']
-requires = ['pyside2==5.15.2.1',
-            'QtPy==2.3.0',
-            'pyqtconsole==1.2.2',
-            'peewee==3.16.0']
-
-[tool.briefcase.app.samplexplore.macOS]
-requires = []
-
-[tool.briefcase.app.samplexplore.linux]
-requires = []
-system_requires = []
-
-[tool.briefcase.app.samplexplore.windows]
-requires = []
