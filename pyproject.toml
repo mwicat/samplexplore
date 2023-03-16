@@ -14,7 +14,7 @@ pyqtconsole  = "^1.2"
 peewee = "^3"
 
 [tool.poetry.scripts]
-samplexplore = "samplexplore.app:main"
+samplexplore = "samplexplore.__main__:main"
 
 [build-system]
 requires = ["poetry-core"]
