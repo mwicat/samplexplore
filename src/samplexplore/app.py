@@ -251,7 +251,16 @@ class Browser(QMainWindow):
         self.statusBar.showMessage(text)
 
     def on_samples_directory_changed(self, path):
-        self.refresh_db()
+        do_refresh_db = QMessageBox.question(
+            self,
+            'Refresh DB prompt',
+            "It appears that samples directory setting has been changed. \n"
+            "Do you want to update the search database to enable file search capability?",
+            QMessageBox.Yes | QMessageBox.No) == QMessageBox.Yes
+
+        if do_refresh_db:
+            self.refresh_db()
+
         self.set_samples_directory(path)
 
     def refresh_db(self):
