@@ -109,7 +109,7 @@ class SettingsManager(QObject):
             self.samplesDirChanged.emit(self._samples_directory)
 
     def write_settings(self):
-        settings = QSettings("mwicat", "samplexplore")
+        settings = QSettings()
         settings.beginGroup("Settings")
 
         settings.setValue("samples_directory", self._samples_directory)

@@ -93,8 +93,10 @@ class RenderTypeProxyModel(QSortFilterProxyModel):
 
 
 class Browser(QMainWindow):
-    def __init__(self, settings_manager, parent=None, console=None, app=None):
+    def __init__(self, settings_manager, parent=None, console=None, app=None, log_view_dlg=None):
         super(Browser, self).__init__(parent=parent)
+
+        self.log_view_dlg = log_view_dlg
 
         self.settings_manager = settings_manager
         self.settings_manager.samplesDirChanged.connect(self.on_samples_directory_changed)
@@ -282,11 +284,11 @@ class Browser(QMainWindow):
         self.openWebsiteAction = QAction(QIcon(":globe.svg"), "Open &website", self)
         self.openWebsiteAction.triggered.connect(lambda: QDesktopServices.openUrl(QUrl(WEBSITE_URL)))
 
+        self.showLogViewerAction = QAction(QIcon(":book.svg"), "&Log viewer", self)
+        self.showLogViewerAction.triggered.connect(self.log_view_dlg.show)
+
         self.refreshDbAction = QAction(QIcon(":arrows-round.svg"), "&Refresh search database", self)
         self.refreshDbAction.triggered.connect(self.refresh_db)
-
-        self.toggleOnTop = QAction(QIcon(":note-sticky.svg"), "&Toggle always on top", self)
-        self.toggleOnTop.triggered.connect(self.toggle_window_on_top)
 
     def open_settings(self):
         self.settings_manager.show_settings_dialog()
@@ -313,6 +315,8 @@ class Browser(QMainWindow):
 
         helpMenu = QMenu("&Help", self)
         helpMenu.addAction(self.openWebsiteAction)
+        helpMenu.addAction(self.showLogViewerAction)
+
         menuBar.addMenu(helpMenu)
 
     def _createToolBars(self):

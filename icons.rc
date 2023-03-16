@@ -9,5 +9,6 @@
     <file alias="settings.svg">resources/settings.svg</file>
     <file alias="repeat.svg">resources/repeat.svg</file>
     <file alias="repeat-on.svg">resources/repeat-on.svg</file>
+    <file alias="book.svg">resources/book.svg</file>
 </qresource>
 </RCC>
