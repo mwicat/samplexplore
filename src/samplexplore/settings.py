@@ -125,7 +125,7 @@ class SettingsManager(QObject):
         settings.endGroup()
 
     def read_settings(self):
-        settings = QSettings("mwicat", "samplexplore")
+        settings = QSettings()
         print('settings location', settings.fileName())
 
         settings.beginGroup("Settings")
