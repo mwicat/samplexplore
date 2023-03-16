@@ -79,13 +79,10 @@ def main():
     data_path = QStandardPaths.writableLocation(QStandardPaths.AppLocalDataLocation)
     data_path_dir = QDir(data_path)
 
-    log_view_dlg = LogViewDialog()
-
     global log_proxy
     log_proxy = LogProxy()
-    log_proxy.log.connect(log_view_dlg.append_log)
-    log_proxy.error.connect(lambda: QMessageBox.critical(
-        None, "Error occured", "An unexpected error occured. Check menu Help -> Log viewer for details"))
+
+    log_view_dlg = LogViewDialog()
 
     if not data_path_dir.exists():
         data_path_dir.mkpath('.')
@@ -102,6 +99,14 @@ def main():
                         format='%(asctime)s %(message)s',
                         handlers=log_handlers)
 
+
+    log_proxy.log.connect(log_view_dlg.append_log)
+    log_proxy.error.connect(lambda: QMessageBox.critical(
+        None,
+        "Error occured",
+        "An unexpected error occured.\n"
+        "For details, visit menu Help -> Log viewer or quit and open log file at path '{}'".format(log_path)))
+
     logging.info("Application started")
 
     console_locals = {}
@@ -114,7 +119,12 @@ def main():
     settings_manager = SettingsManager()
     settings_manager.read_settings()
 
-    browser = Browser(settings_manager, app=app, console=console, log_view_dlg=log_view_dlg)
+    db_path = data_path_dir.filePath("samplexplore.sqlite")
+
+    db_manager = DBManager()
+    db_manager.connect(db_path)
+
+    browser = Browser(settings_manager, db_manager, app=app, console=console, log_view_dlg=log_view_dlg)
     browser.show()
 
     console.interpreter.locals['browser'] = browser

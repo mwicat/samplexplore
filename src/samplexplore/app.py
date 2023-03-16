@@ -93,15 +93,15 @@ class RenderTypeProxyModel(QSortFilterProxyModel):
 
 
 class Browser(QMainWindow):
-    def __init__(self, settings_manager, parent=None, console=None, app=None, log_view_dlg=None):
+    def __init__(self, settings_manager, db_manager, parent=None, console=None, app=None, log_view_dlg=None):
         super(Browser, self).__init__(parent=parent)
 
         self.log_view_dlg = log_view_dlg
 
+        self.db_manager = db_manager
+
         self.settings_manager = settings_manager
         self.settings_manager.samplesDirChanged.connect(self.on_samples_directory_changed)
-
-        #self.set_samples_directory(self.settings_manager.samples_directory)
 
         self.play_locked = False
         self.search_phrase = None
@@ -117,9 +117,6 @@ class Browser(QMainWindow):
         self._createActions()
         self._createMenuBar()
         self._createToolBars()
-
-        self.db_manager = DBManager()
-        self.db_manager.connect(DB_PATH)
 
         self.resize(*INITIAL_SIZE)
         self.setWindowTitle('Samplexplore')
