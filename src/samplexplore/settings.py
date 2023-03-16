@@ -67,6 +67,14 @@ class SettingsDialog(QDialog):
             samples_dir if samples_dir is not None else '')
         self.formlayout.addRow('Samples directory:',  self.select_directory_widget)
 
+        sdir_hintlabel = QLabel(
+            "Note: This program assumes you have a single directory where all your samples are located\n"
+            "(but you can also point it to entire drive if you want).\n"
+            "Keep in mind that contents of the selected directory will not be changed in any way.\n")
+        sdir_hintlabel.setStyleSheet("color: darkgreen")
+
+        self.formlayout.addRow(sdir_hintlabel)
+
         self.bbox = bbox = QDialogButtonBox()
         self.bbox.setStandardButtons(QDialogButtonBox.Cancel | QDialogButtonBox.Ok)
 
