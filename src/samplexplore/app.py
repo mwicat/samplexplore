@@ -122,7 +122,7 @@ class Browser(QMainWindow):
         self.db_manager.connect(DB_PATH)
 
         self.resize(*INITIAL_SIZE)
-        self.setWindowTitle('Sample browser')
+        self.setWindowTitle('Samplexplore')
 
         self.fsmodel = QFileSystemModel()
 
