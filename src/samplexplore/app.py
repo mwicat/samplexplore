@@ -96,6 +96,8 @@ class Browser(QMainWindow):
     def __init__(self, settings_manager, db_manager, parent=None, console=None, app=None, log_view_dlg=None):
         super(Browser, self).__init__(parent=parent)
 
+        self.samples_directory = None
+
         self.log_view_dlg = log_view_dlg
 
         self.db_manager = db_manager
@@ -271,9 +273,15 @@ class Browser(QMainWindow):
         self.perform_search()
 
     def set_samples_directory(self, path):
-        print('set samples directory', path)
+        self.samples_directory = path
         self.fsmodel.setRootPath('/')
-        og_index = self.fsmodel.index(path)
+        og_index = self.fsmodel.index(self.samples_directory)
+        root_index = self.proxyModel.mapFromSource(og_index)
+        self.file_view.setRootIndex(root_index)
+
+    def refresh_file_view(self):
+        self.file_view.reset()
+        og_index = self.fsmodel.index(self.samples_directory)
         root_index = self.proxyModel.mapFromSource(og_index)
         self.file_view.setRootIndex(root_index)
 
@@ -382,7 +390,10 @@ class Browser(QMainWindow):
     def select_path(self, path):
         idx = self.fsmodel.index(path)
         file_view_idx = self.proxyModel.mapFromSource(idx)
-        QTimer.singleShot(0, lambda: self.file_view.setCurrentIndex(file_view_idx))
+
+        self.refresh_file_view()
+
+        self.file_view.setCurrentIndex(file_view_idx)
 
     def on_play_clicked(self):
         if self.mediaPlayer.state() == QMediaPlayer.State.PlayingState:
