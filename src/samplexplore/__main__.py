@@ -121,7 +121,7 @@ def main():
 
     db_path = data_path_dir.filePath("samplexplore.sqlite")
 
-    db_manager = DBManager()
+    db_manager = DBManager(log_proxy)
     db_manager.connect(db_path)
 
     browser = Browser(settings_manager, db_manager, app=app, console=console, log_view_dlg=log_view_dlg)
@@ -130,6 +130,10 @@ def main():
     console.interpreter.locals['browser'] = browser
 
     retcode = app.exec_()
+
+    logging.info("Shutting down database manager...")
+    db_manager.shutdown()
+
     logging.info("Application finished")
     sys.exit(retcode)
 
